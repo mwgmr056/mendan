@@ -28,6 +28,27 @@
   input, textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px;
                     background: var(--bg); color: var(--text); font: inherit; }
   textarea { min-height: 80px; resize: vertical; }
+  .intro { color: var(--muted); font-size: .9rem; margin: 0 0 4px; }
+  .setgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 760px) { .setgrid { grid-template-columns: 1fr; } }
+  .field { border: 1px solid var(--line); border-radius: 10px; padding: 4px 14px 14px; margin-top: 14px; }
+  .field .num { display: inline-block; min-width: 1.6em; height: 1.6em; line-height: 1.6em; text-align: center; border-radius: 50%;
+                background: var(--accent); color: #fff; font-size: .8rem; margin-right: 6px; }
+  .where { font-size: .8rem; color: var(--accent); background: var(--accent-soft); border-radius: 6px; padding: 3px 8px; display: inline-block; margin: 0 0 8px; }
+  .pv-label { font-size: .8rem; color: var(--muted); font-weight: 600; margin: 14px 0 6px; }
+  .mock { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: 14px; }
+  .mock-title { font-size: 1.1rem; font-weight: 700; margin: 0 0 4px; }
+  .mock-desc { font-size: .85rem; color: var(--muted); white-space: pre-wrap; margin: 0; }
+  .mock-slots { display: flex; gap: 6px; margin-top: 10px; }
+  .mock-slots span { border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 3px 8px; font-size: .75rem; color: var(--muted); }
+  .mock-mail { font-size: .85rem; }
+  .mock-mail .from { color: var(--muted); font-size: .75rem; }
+  mark.hl { background: #fff0a8; color: inherit; border-radius: 3px; padding: 0 2px; }
+  @media (prefers-color-scheme: dark) { mark.hl { background: #5a4b10; } }
+  details.adv { margin-top: 16px; font-size: .9rem; }
+  details.adv summary { cursor: pointer; color: var(--muted); }
+  .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .dirty { color: var(--err); font-size: .85rem; }
   button { font: inherit; cursor: pointer; }
   .primary { margin-top: 16px; padding: 11px 20px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; }
   .secondary { padding: 8px 14px; border: 1px solid var(--accent); border-radius: 8px; background: transparent; color: var(--accent); font-weight: 600; white-space: nowrap; }
@@ -97,7 +118,7 @@
     <nav class="tabs">
       <button type="button" data-tab="status" class="on">予約状況</button>
       <button type="button" data-tab="create">枠の作成</button>
-      <button type="button" data-tab="settings">設定</button>
+      <button type="button" data-tab="settings">表示設定</button>
     </nav>
     <div id="message" class="msg" hidden></div>
 
@@ -147,15 +168,50 @@
     <!-- 設定 -->
     <div data-panel="settings" hidden>
       <form class="card" id="setForm" novalidate>
-        <h2>設定</h2>
-        <label for="sTitle">面談名（ページの見出し・メール件名に使われます）</label>
-        <input id="sTitle" maxlength="100" placeholder="面談予約">
-        <label for="sDesc">利用者への案内文（任意）</label>
-        <textarea id="sDesc" maxlength="1000" placeholder="例：〇〇に関する個別面談です。ご希望の枠を1つお選びください。"></textarea>
-        <label for="sUrl">利用者ページのURL</label>
-        <input id="sUrl" type="url">
-        <div class="hint">確定メールの「変更用リンク」に使われます。通常は自動入力のままで構いません。</div>
-        <button class="primary" id="setBtn" type="submit">保存</button>
+        <h2>表示設定</h2>
+        <p class="intro">利用者ページと、システムが自動で送る確認メールに表示される文言を設定します。<br>
+          未入力のままでも使えます（最初に利用者へURLを知らせるメールは、この設定とは関係ありません）。</p>
+
+        <div class="setgrid">
+          <div>
+            <div class="field">
+              <label for="sTitle"><span class="num">1</span>面談名</label>
+              <div class="where">表示場所：利用者ページの見出し ／ 確認メールの件名</div>
+              <input id="sTitle" maxlength="100" placeholder="例：令和8年度 〇〇面談（未入力なら「面談予約」）">
+            </div>
+            <div class="field">
+              <label for="sDesc"><span class="num">2</span>案内文</label>
+              <div class="where">表示場所：利用者ページの見出しの下（予約の入力画面のみ）</div>
+              <textarea id="sDesc" maxlength="1000" placeholder="例：所要時間は20分です。オンライン希望の方は備考欄の会議室をご確認ください。&#10;（未入力なら標準の説明文が表示されます）"></textarea>
+            </div>
+          </div>
+
+          <div>
+            <div class="pv-label">利用者ページの見え方</div>
+            <div class="mock">
+              <p class="mock-title"><mark class="hl" id="pvTitle"></mark></p>
+              <p class="mock-desc"><mark class="hl" id="pvDesc"></mark></p>
+              <div class="mock-slots"><span>09:00〜09:30</span><span>09:40〜10:10</span><span>…</span></div>
+            </div>
+            <div class="pv-label">確認メールの件名（例）</div>
+            <div class="mock mock-mail">
+              <div class="from">差出人：面談予約受付</div>
+              <div>【<mark class="hl" id="pvSubj"></mark>】予約受付のお知らせ（2030年3月4日（月） 09:00〜09:30）</div>
+            </div>
+          </div>
+        </div>
+
+        <details class="adv">
+          <summary>詳細設定（通常は変更不要）</summary>
+          <label for="sUrl">利用者ページのURL</label>
+          <input id="sUrl" type="url">
+          <div class="hint">確認メールに入る「変更・取り消し用リンク」の行き先です。GitHub で公開した管理者ページを開くと自動で入ります。</div>
+        </details>
+
+        <div class="actions">
+          <button class="primary" id="setBtn" type="submit">保存</button>
+          <span class="dirty" id="dirty" hidden>未保存の変更があります</span>
+        </div>
       </form>
     </div>
   </section>
@@ -435,7 +491,16 @@ function fillSettings() {
   $('sTitle').value = s.title || '';
   $('sDesc').value = s.description || '';
   $('sUrl').value = s.userUrl || suggestUrl;
+  setPreview(); $('dirty').hidden = true;
 }
+const DEFAULT_DESC = 'ご希望の枠を選び、氏名とメールアドレスを入力してください。先着順で、埋まった枠は一覧から消えます。';
+function setPreview() {
+  const t = $('sTitle').value.trim() || '面談予約';
+  $('pvTitle').textContent = t;
+  $('pvSubj').textContent = t;
+  $('pvDesc').textContent = $('sDesc').value.trim() || DEFAULT_DESC;
+}
+['sTitle', 'sDesc', 'sUrl'].forEach(id => $(id).addEventListener('input', () => { setPreview(); $('dirty').hidden = false; }));
 $('setForm').addEventListener('submit', async e => {
   e.preventDefault();
   $('setBtn').disabled = true;

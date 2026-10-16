@@ -150,7 +150,11 @@ function showError(text) {
   const m = $('message'); m.textContent = text || ''; m.hidden = !text;
   if (text) m.scrollIntoView({ block: 'center', behavior: 'smooth' });
 }
-function show(ids) { ['manage', 'pick', 'done', 'resendBox'].forEach(id => $(id).hidden = !ids.includes(id)); }
+function show(ids) {
+  ['manage', 'pick', 'done', 'resendBox'].forEach(id => $(id).hidden = !ids.includes(id));
+  // 案内文は新規予約の画面だけに表示（予約完了後・予約確認/変更の画面では出さない）
+  $('desc').hidden = !(mode === 'book' && ids.includes('pick'));
+}
 function applyHeader(d) {
   if (d.title) { $('title').textContent = d.title; document.title = d.title; }
   if (d.description) $('desc').textContent = d.description;

@@ -45,8 +45,6 @@
   .mock-mail .from { color: var(--muted); font-size: .75rem; }
   mark.hl { background: #fff0a8; color: inherit; border-radius: 3px; padding: 0 2px; }
   @media (prefers-color-scheme: dark) { mark.hl { background: #5a4b10; } }
-  details.adv { margin-top: 16px; font-size: .9rem; }
-  details.adv summary { cursor: pointer; color: var(--muted); }
   .actions { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
   .dirty { color: var(--err); font-size: .85rem; }
   button { font: inherit; cursor: pointer; }
@@ -127,7 +125,7 @@
       <div class="card">
         <div class="share">
           <div><div class="label">利用者に送るURL</div><code id="shareUrl"></code>
-            <div class="hint" id="localNote" hidden>パソコン上のファイルを指す確認用のURLです。他の人は開けません。GitHub に公開してから管理者ページを開くと、公開URLに自動で切り替わります。</div></div>
+            <div class="hint" id="localNote" hidden>パソコン上のファイルを指す確認用のURLです。他の人は開けません。GitHub に公開した管理者ページを開くと、公開URLに自動で切り替わります。</div></div>
           <button class="secondary" id="copyUrl" type="button">コピー</button>
         </div>
       </div>
@@ -201,12 +199,6 @@
           </div>
         </div>
 
-        <details class="adv">
-          <summary>詳細設定（通常は変更不要）</summary>
-          <label for="sUrl">利用者ページのURL</label>
-          <input id="sUrl" type="url">
-          <div class="hint">確認メールに入る「変更・取り消し用リンク」の行き先です。GitHub で公開した管理者ページを開くと自動で入ります。</div>
-        </details>
 
         <div class="actions">
           <button class="primary" id="setBtn" type="submit">保存</button>
@@ -272,9 +264,12 @@ async function enter() {
     try { sessionStorage.setItem(KEY, PW); } catch (_) {}
     $('login').hidden = true; $('app').hidden = false;
     DATA = d;
+    // 利用者ページのURLは自動で決める：
+    //  ・公開中（https）の管理者ページを開いたら、常にその場所の利用者ページURLにそろえる
+    //  ・パソコン上のファイルで開いたときは、公開URLが登録済みなら上書きしない
     const u = d.settings.userUrl || '';
-    // 初回、またはローカル確認用URLのまま GitHub 上で開いたときは、利用者ページURLを自動保存
-    if (!u || (u.startsWith('file:') && location.protocol === 'https:')) {
+    const isPublic = location.protocol === 'https:';
+    if (!u || (isPublic && u !== suggestUrl) || (!isPublic && !u.startsWith('https:'))) {
       const s = await call('admin.settings', Object.assign({}, d.settings, { userUrl: suggestUrl }));
       if (s) DATA.settings = s.settings;
     }
@@ -490,7 +485,6 @@ function fillSettings() {
   const s = DATA.settings;
   $('sTitle').value = s.title || '';
   $('sDesc').value = s.description || '';
-  $('sUrl').value = s.userUrl || suggestUrl;
   setPreview(); $('dirty').hidden = true;
 }
 const DEFAULT_DESC = 'ご希望の枠を選び、氏名とメールアドレスを入力してください。先着順で、埋まった枠は一覧から消えます。';
@@ -500,12 +494,12 @@ function setPreview() {
   $('pvSubj').textContent = t;
   $('pvDesc').textContent = $('sDesc').value.trim() || DEFAULT_DESC;
 }
-['sTitle', 'sDesc', 'sUrl'].forEach(id => $(id).addEventListener('input', () => { setPreview(); $('dirty').hidden = false; }));
+['sTitle', 'sDesc'].forEach(id => $(id).addEventListener('input', () => { setPreview(); $('dirty').hidden = false; }));
 $('setForm').addEventListener('submit', async e => {
   e.preventDefault();
   $('setBtn').disabled = true;
   const d = await call('admin.settings', {
-    title: $('sTitle').value, description: $('sDesc').value, userUrl: $('sUrl').value.trim(),
+    title: $('sTitle').value, description: $('sDesc').value, userUrl: DATA.settings.userUrl || suggestUrl,
   });
   $('setBtn').disabled = false;
   if (d) { DATA.settings = d.settings; renderAll(); msg('設定を保存しました。', 'ok'); }
